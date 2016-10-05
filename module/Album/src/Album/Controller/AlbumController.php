@@ -6,6 +6,10 @@ use Zend\View\Model\ViewModel;
 use Album\Model\Album;
 use Album\Form\AlbumForm;
 
+use Zend\Permissions\Acl\Acl;
+use Zend\Permissions\Acl\Role\GenericRole as Role;
+use Zend\Permissions\Acl\Resource\GenericResource as Resource;
+
 class AlbumController extends AbstractActionController
 {
     protected $albumTable;
@@ -37,6 +41,52 @@ class AlbumController extends AbstractActionController
             }
         }
         return array('form' => $form);
+    }
+
+    public function testAction(){
+        $auth = $this->getServiceLocator()->get('Zend\Authentication\AuthenticationService');
+        echo '<h1>hasIdentity = ' . $auth->hasIdentity() . '</h1>';
+
+        $config = $this->getServiceLocator()->get('Config');
+        $acl = new \Auth\Acl\Acl($config);
+        $role = \Auth\Acl\Acl::DEFAULT_ROLE;
+
+        $usr = $auth->getIdentity();
+        $usrl_id = $usr->usrl_id;
+
+        $user_id = $usrl_id;
+
+        switch ($usrl_id) {
+            case 1 :
+                $role = 'admin'; // guest
+                break;
+            case 2 :
+                $role = 'member';
+                break;
+            default :
+                $role = \Auth\Acl\Acl::DEFAULT_ROLE; // guest
+                break;
+        }
+      
+        $controller = $this->params()->fromRoute('controller');
+        $action = $this->params()->fromRoute('action');
+        
+        echo '<pre>';
+        echo "controller = " . $controller . "\n";
+        echo "action = " . $action . "\n";
+        echo "role = " . $role . "\n";
+        echo '</pre>';
+        
+        if (!$acl->hasResource($controller)) {
+            throw new \Exception('Resource ' . $controller . ' not defined');
+        }
+        
+        echo '<h1> Acl answer: ' . $acl->isAllowed($role, $controller, $action) . '</h1>';
+
+        if (!$acl->isAllowed($role, $controller, $action)) {
+            echo "Not Allowed";
+            //return $this->redirect()->toRoute('auth/default', array('controller' => 'index', 'action' => 'login'));
+        }
     }
 
     public function editAction()
